@@ -10,8 +10,14 @@ This is the base script to train each network. There are variations on this for 
 
 	python train.py free_space 1
     
-----------------------------------------------------------train_with_conformance.py----------------------------------------------------------
-This aims to ensure that no velocity ==> no change in predicted torque. But, for now, it simply predicts \delta torque and yet, performs much better than directly predicting actual torque.
+----------------------------------------------------------train_with_conformance----------------------------------------------------------
+This aims to learn a model that ensures that no velocity ==> no change in predicted torque. The arguments for all command below are the same as those for train.py described above.
+
+First, create memories as follows
+
+	python create_memories.py free_space 1
+
+Then, train a conformant model as follows
 
 	python train_with_conformance.py free_space 1
 
