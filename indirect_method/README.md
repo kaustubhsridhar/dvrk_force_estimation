@@ -10,6 +10,10 @@ This is the base script to train each network. There are variations on this for 
 
 	python train.py free_space 1
     
+----------------------------------------------------------train_with_conformance.py----------------------------------------------------------
+This aims to ensure that no velocity ==> no change in predicted torque. But, for now, it simply predicts \delta torque and yet, performs much better than directly predicting actual torque.
+
+	python train_with_conformance.py free_space 1
 
 ----------------------------------------------------------test.py----------------------------------------------------------
 

@@ -5,7 +5,7 @@ from scipy import signal
 from torch.utils.data import Dataset
 
 class indirectDataset(Dataset):
-    def __init__(self, path, window, skip, indices = [0,1,2,3,4,5], num=1e9, is_rnn=False, filter_signal=False):
+    def __init__(self, path, window, skip, indices = [0,1,2,3,4,5], num=1e9, is_rnn=False, filter_signal=False, return_prev_torque=False):
 
         all_joints = np.array([])
         joint_path = join(path, 'joints')
@@ -26,6 +26,7 @@ class indirectDataset(Dataset):
         self.skip = skip
         self.is_rnn = is_rnn
         self.num = num
+        self.return_prev_torque = return_prev_torque
 
         jacobian_path = join(path, 'jacobian')
         all_jacobian = np.loadtxt(join(jacobian_path, 'interpolated_all_jacobian.csv'), delimiter=',')
@@ -45,11 +46,12 @@ class indirectDataset(Dataset):
     def __getitem__(self, idx):
         quotient = int(idx / self.skip)
         remainder = idx % self.skip
-        begin = quotient * self.window * self.skip + remainder
-        end = begin + self.window * self.skip
-        position, velocity, torque,  time = self.genitem(begin, end)
-        jacobian = self.jacobian[begin:end:self.skip,:]
-        return position, velocity, torque, jacobian, time
+        begin = quotient * self.window * self.skip + remainder 
+        end = begin + self.window * self.skip 
+        if self.return_prev_torque: 
+            begin = begin + 1 # New
+            end = end + 1 # New
+        return self.genitem(begin, end)
 
     def genitem(self, begin, end):
         position = self.position[begin:end:self.skip,:]
@@ -57,13 +59,22 @@ class indirectDataset(Dataset):
         if self.is_rnn:
             time = self.time[begin:end:self.skip].flatten()
             torque = self.torque[begin:end:self.skip,:]
+            if self.return_prev_torque: 
+                prev_torque = self.torque[begin-1:end-1:self.skip,:] # New
         else:
             time = self.time[end-self.skip]
             position = position.flatten()
             velocity = velocity.flatten()
             torque = self.torque[end-self.skip,:]
+            if self.return_prev_torque: 
+                prev_torque = self.torque[end-self.skip-1,:] # New
 
-        return position, velocity, torque, time
+        jacobian = self.jacobian[begin:end:self.skip,:]
+
+        if self.return_prev_torque: 
+            return position, velocity, torque, jacobian, time, prev_torque # New
+        else:
+            return position, velocity, torque, jacobian, time
 
 
 class indirectTestDataset(indirectDataset):
