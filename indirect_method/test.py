@@ -7,58 +7,46 @@ import numpy as np
 from pathlib import Path
 from torch.utils.data import DataLoader
 from dataset import indirectTestDataset, indirectDataset
+from os.path import join 
+import matplotlib.pyplot as plt
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-contact = 'with_contact'
-data = 'trocar'
 
 JOINTS = utils.JOINTS
-epoch_to_use = 0 #int(sys.argv[1])
-exp = sys.argv[1] #sys.argv[2]
+epoch_to_use = 1000 #int(sys.argv[1])
+exp = sys.argv[1] 
 net = sys.argv[2]
-seal = sys.argv[3]
+data = sys.argv[3]
 preprocess = 'filtered_torque'# sys.argv[4]
-is_rnn = net == 'lstm'
+is_rnn = ('lstm' in net)
+print('Running for is_rnn value: ', is_rnn)
 if is_rnn:
     batch_size = 1
 else:
     batch_size = 8192
-root = Path('checkpoints' )
-
-if seal == 'seal':
-    fs = 'free_space'
-elif seal =='base':
-    fs = 'no_cannula'
+root = Path('checkpoints')
 
 max_torque = torch.tensor(utils.max_torque).to(device)
     
 def main():
     all_pred = None
-    if exp == 'train':
-        path = '../data/csv/train/' + data + '/'
-    elif exp == 'val':
-        path = '../data/csv/val/' + data + '/'
-    elif exp =='test':
-        path = '../data/csv/test/' + data + '/no_contact/'
-    else:
-        path = '../data/csv/test/' + data + '/' + contact + '/' + exp + '/'
+    path = join('..', 'bilateral_free_space_sep_27', exp, 'psm1_mary', data)
     in_joints = [0,1,2,3,4,5]
 
     if is_rnn:
         window = 1000
     else:
         window = utils.WINDOW
-
     
     if is_rnn:
-        dataset = indirectDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn)
+        dataset = indirectDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True)
     else:
-        dataset = indirectTestDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn)
+        dataset = indirectTestDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True)
     loader = DataLoader(dataset=dataset, batch_size = batch_size, shuffle=False, drop_last=False)
 
     model_root = []    
     for j in range(JOINTS):
-        folder = fs + str(j)        
+        folder = data + str(j)        
         model_root.append(root / preprocess / net / folder)
         
     networks = []
@@ -72,42 +60,71 @@ def main():
         utils.load_prev(networks[j], model_root[j], epoch_to_use)
         print("Loaded a " + str(j) + " model")
 
-#    loss_fn = torch.nn.MSELoss()
-#    all_loss = 0
-    all_pred = torch.tensor([])
-    all_time = torch.tensor([])
+    loss_fn = torch.nn.MSELoss()
+    last_trues = []
+    last_preds = []
 
-    for i, (position, velocity, torque, jacobian, time) in enumerate(loader):
-        position = position.to(device)
-        velocity = velocity.to(device)
-        if is_rnn: 
-            posvel = torch.cat((position, velocity), axis=2).contiguous()
+    for i, (global_position, global_velocity, global_torque, global_jacobian, global_time, global_prev_torque) in enumerate(loader):
+        # print(global_position.shape, global_velocity.shape, global_torque.shape, global_jacobian.shape, global_time.shape, global_prev_torque.shape) 
+        # torch.Size([1, 1000, 6]) torch.Size([1, 1000, 6]) torch.Size([1, 1000, 6]) torch.Size([1, 1000, 36]) torch.Size([1, 1000]) torch.Size([1, 1000, 6])
+
+        if i == 0:
+            for i2 in range(1, global_position.shape[1]+1):
+                position = global_position[:,:i2,:].to(device)
+                velocity = global_velocity[:,:i2,:].to(device)
+                torque = global_torque[:,:i2,:]
+                if i2 == 1:
+                    last_trues = global_prev_torque[0,:1,:].cpu().numpy().tolist() # (1, 6)
+                    last_preds = global_prev_torque[0,:1,:].cpu().numpy().tolist() # (1, 6)
+                prev_torque = torch.tensor(np.array(last_preds)).unsqueeze(0) # (1, i2, 6)
+
+                position = position.to(device)
+                velocity = velocity.to(device)
+                posvel = torch.cat((position, velocity), axis=2 if is_rnn else 1).contiguous()
+
+                cur_pred = torch.zeros(torque.shape) # (1, i2, 6)
+                for j in range(JOINTS):
+                    pred = networks[j](posvel).detach().cpu() # (1, i2, 1)
+                    cur_pred[:, :, j] = pred[:, :, 0] + prev_torque[:, :, j] # (1, i2)
+
+                last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
+                last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist()) # (i2+1, 6)
+                print(f'At {i}/{len(loader)}; Processing {i2}/{global_position.shape[1]}; MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
         else:
-            posvel = torch.cat((position, velocity), axis=1).contiguous()
+            position = global_position
+            velocity = global_velocity
+            torque = global_torque
+            prev_torque = torch.tensor(np.array(last_preds)[-window:, :]).unsqueeze(0) # (1, 1000, 6)
 
-        if is_rnn:
-            time = time.permute((1,0))
-        torque = torque.squeeze()
+            position = position.to(device)
+            velocity = velocity.to(device)
+            posvel = torch.cat((position, velocity), axis=2 if is_rnn else 1).contiguous()
 
-        cur_pred = torch.zeros(torque.size())
-        for j in range(JOINTS):
-            pred = networks[j](posvel).squeeze().detach()
-#            pred = pred * max_torque[j]
-            cur_pred[:,j] = pred.cpu()
+            cur_pred = torch.zeros(torque.shape) # (1, 1000, 6)
+            for j in range(JOINTS):
+                pred = networks[j](posvel).detach().cpu() # (1, 1000, 1)
+                cur_pred[:, :, j] = pred[:, :, 0] + prev_torque[:, :, j] # (1, 1000)
 
-#        loss = loss_fn(cur_pred, torque)
-#        all_loss += loss.item()
-                
-        if is_rnn:
-            time = time.squeeze(-1)
+            last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
+            last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist())
+            print(f'At {i}/{len(loader)}; Current window MSE: {loss_fn(torque, cur_pred).item()}, MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
-        all_time = torch.cat((all_time, time.cpu()), axis=0) if all_time.size() else time.cpu()
-        all_pred = torch.cat((all_pred, cur_pred.cpu()), axis=0) if all_pred.size() else cur_pred.cpu()
+    last_trues = np.array(last_trues)
+    last_preds = np.array(last_preds)
+    print(f'Last trues: {last_trues.shape}, last preds: {last_preds.shape}')
+    print(f'MSE: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
-    all_pred = torch.cat((all_time.unsqueeze(1), all_pred), axis=1)
-    np.savetxt(path + net + '_' + seal + '_pred_' + preprocess + '.csv', all_pred.numpy())
-        
-#   print('Loss: ', all_loss)
+    # last_trues.shape = (1000, 6)
+    # last_preds.shape = (1000, 6)
+    # plot 6 plots one below the other comparing the true and predicted torque for each of the 6 joints
+    plt.figure(figsize=(24, 4))
+    for i in range(6):
+        plt.subplot(6, 1, i+1)
+        plt.plot(last_trues[:,i], label='True')
+        plt.plot(last_preds[:,i], label='Predicted')
+        plt.legend()
+    plt.savefig(f'../bilateral_free_space_sep_27/{exp}/psm1_mary/{data}/last_trues_preds.png')
+
 
 if __name__ == "__main__":
     main()

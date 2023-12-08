@@ -25,4 +25,8 @@ Then, train a conformant model as follows
 
 This is the base script to test each network. There are variations on this for testing each of the cases listed in the ISMR 2021 paper. It takes three arguemnts, the first is which experiment to load as a striong, the second is which network to use ('lstm' or not), and the third is whether to use the seal or base case. It assumes the path to data is at '../data/csv/test/< 'no_contact', 'with_contact' >/<exp>
 
-	python test.py <exp> lstm seal
+	python test.py <exp> <net> <data> 
+	
+	E.g:
+	
+	python test.py test lstm_delta free_space

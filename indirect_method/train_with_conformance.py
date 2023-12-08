@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from utils import init_weights, WINDOW, JOINTS, SKIP, max_torque, save, load_prev
+import os
 from os.path import join
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -16,11 +17,15 @@ data = sys.argv[1]
 train_path = join('..', 'bilateral_free_space_sep_27', 'train', 'psm1_mary', data)
 val_path = join('..', 'bilateral_free_space_sep_27', 'val', 'psm1_mary', data)
 root = Path('checkpoints' )
+os.makedirs(root, exist_ok=True)
+os.makedirs(root / 'filtered_torque', exist_ok=True)
 is_rnn = bool(int(sys.argv[2]))
 if is_rnn:
-    folder = 'lstm/' + data
+    folder = 'lstm_delta/'
 else:
-    folder = 'ff/' + data
+    folder = 'ff_delta/'
+os.makedirs(root / "filtered_torque" / folder, exist_ok=True)
+folder = folder + data
 range_torque = torch.tensor(max_torque).to(device)
     
 lr = 1e-3
