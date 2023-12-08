@@ -13,8 +13,8 @@ from os.path import join
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 data = sys.argv[1]
-train_path = join('..', 'bilateral_free_space_sep_27', 'train', 'psm3_fena', data)
-val_path = join('..', 'bilateral_free_space_sep_27', 'val', 'psm3_fena', data)
+train_path = join('..', 'bilateral_free_space_sep_27', 'train', 'psm1_mary', data)
+val_path = join('..', 'bilateral_free_space_sep_27', 'val', 'psm1_mary', data)
 root = Path('checkpoints' )
 is_rnn = bool(int(sys.argv[2]))
 if is_rnn:
