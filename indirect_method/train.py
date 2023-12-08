@@ -13,8 +13,8 @@ from os.path import join
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 data = sys.argv[1]
-train_path = join('..', 'data', 'csv', 'train', data)
-val_path = join('..','data','csv','val', data)
+train_path = join('..', 'bilateral_free_space_sep_27', 'train', 'psm1_mary', data)
+val_path = join('..', 'bilateral_free_space_sep_27', 'val', 'psm1_mary', data)
 root = Path('checkpoints' )
 is_rnn = bool(int(sys.argv[2]))
 if is_rnn:
@@ -110,7 +110,7 @@ for e in range(epoch, epochs + 1):
         tq.set_postfix(loss=' loss={:.5f}'.format(step_loss))
         epoch_loss += step_loss
 
-    tq.set_postfix(loss=' loss={:.5f}'.format(epoch_loss/len(train_loader)))
+    tq.set_postfix(loss=' epoch loss={:.5f}'.format(epoch_loss/len(train_loader)))
     
     if e % validate_each == 0:
         for j in range(JOINTS):
@@ -134,11 +134,11 @@ for e in range(epoch, epochs + 1):
                     loss = loss_fn(pred.squeeze(), torque[:,j])
                 val_loss[j] += loss.item()
 
-            val_loss = val_loss / len(val_loader)
+        val_loss = val_loss / len(val_loader) # New: moved out of for loop!
                 
         for j in range(JOINTS):
             schedulers[j].step(val_loss[j])
-        tq.set_postfix(loss='validation loss={:5f}'.format(torch.mean(val_loss)))
+        tq.set_postfix(loss='validation loss={:5f}'.format(torch.sum(val_loss))) # New: replaced torch.mean with torch.sum
 
         for j in range(JOINTS):
             model_path = model_root[j] / "model_joint_{}.pt".format(e)
