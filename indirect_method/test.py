@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from dataset import indirectTestDataset, indirectDataset
 from os.path import join 
 import matplotlib.pyplot as plt
+import os 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -124,7 +125,8 @@ def main():
         plt.plot(times, last_trues[:,i], label='True')
         plt.plot(times, last_preds[:,i], label='Predicted')
         plt.legend()
-    plt.savefig(f'../bilateral_free_space_sep_27/{exp}/psm1_mary/{data}/last_trues_preds.png')
+    os.makedirs('../images', exist_ok=True)
+    plt.savefig(f'../images/bilateral_free_space_sep_27___{exp}___psm1_mary___{data}___last_trues_preds.png')
 
 
 if __name__ == "__main__":
