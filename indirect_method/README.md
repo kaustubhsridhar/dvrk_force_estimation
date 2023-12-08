@@ -10,6 +10,11 @@ This is the base script to train each network. There are variations on this for 
 
 	python train.py free_space 1
     
+----------------------------------------------------------train_with_delta----------------------------------------------------------
+This aims to learn a model that predicts \delta torque. The arguments for all command below are the same as those for train.py described above.
+
+	python train_with_delta.py free_space 1
+
 ----------------------------------------------------------train_with_conformance----------------------------------------------------------
 This aims to learn a model that ensures that no velocity ==> no change in predicted torque. The arguments for all command below are the same as those for train.py described above.
 
@@ -30,3 +35,7 @@ This is the base script to test each network. There are variations on this for t
 	E.g:
 	
 	python test.py test lstm_delta free_space
+
+	Or
+
+	python test.py test lstm_delta_conform free_space

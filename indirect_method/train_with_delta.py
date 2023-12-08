@@ -21,9 +21,9 @@ os.makedirs(root, exist_ok=True)
 os.makedirs(root / 'filtered_torque', exist_ok=True)
 is_rnn = bool(int(sys.argv[2]))
 if is_rnn:
-    folder = 'lstm_delta_conform/'
+    folder = 'lstm_delta/'
 else:
-    folder = 'ff_delta_conform/'
+    folder = 'ff_delta/'
 os.makedirs(root / "filtered_torque" / folder, exist_ok=True)
 folder = folder + data
 range_torque = torch.tensor(max_torque).to(device)

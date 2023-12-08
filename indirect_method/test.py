@@ -25,8 +25,6 @@ if is_rnn:
 else:
     batch_size = 8192
 root = Path('checkpoints')
-
-max_torque = torch.tensor(utils.max_torque).to(device)
     
 def main():
     all_pred = None
@@ -61,22 +59,22 @@ def main():
         print("Loaded a " + str(j) + " model")
 
     loss_fn = torch.nn.MSELoss()
-    last_trues = []
-    last_preds = []
 
     for i, (global_position, global_velocity, global_torque, global_jacobian, global_time, global_prev_torque) in enumerate(loader):
         # print(global_position.shape, global_velocity.shape, global_torque.shape, global_jacobian.shape, global_time.shape, global_prev_torque.shape) 
         # torch.Size([1, 1000, 6]) torch.Size([1, 1000, 6]) torch.Size([1, 1000, 6]) torch.Size([1, 1000, 36]) torch.Size([1, 1000]) torch.Size([1, 1000, 6])
 
         if i == 0:
-            for i2 in range(1, global_position.shape[1]+1):
+            for i2 in range(1, global_position.shape[1]+1): # have to iterate over every timestep till 1000 for the first window of size 1000!
                 position = global_position[:,:i2,:].to(device)
                 velocity = global_velocity[:,:i2,:].to(device)
                 torque = global_torque[:,:i2,:]
+                time = global_time[:,:i2].to(device)
                 if i2 == 1:
                     last_trues = global_prev_torque[0,:1,:].cpu().numpy().tolist() # (1, 6)
                     last_preds = global_prev_torque[0,:1,:].cpu().numpy().tolist() # (1, 6)
-                prev_torque = torch.tensor(np.array(last_preds)).unsqueeze(0) # (1, i2, 6)
+                    times = [global_time[0,1].cpu().item()] # (1,)
+                prev_torque = global_prev_torque[:,:i2,:] # (1, i2, 6)
 
                 position = position.to(device)
                 velocity = velocity.to(device)
@@ -89,12 +87,14 @@ def main():
 
                 last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
                 last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist()) # (i2+1, 6)
-                print(f'At {i}/{len(loader)}; Processing {i2}/{global_position.shape[1]}; MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
+                times.append(time[0,-1].cpu().item())
+                print(f'At {i}/{len(loader)}; Processing {i2}/{global_position.shape[1]}, MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
         else:
             position = global_position
             velocity = global_velocity
             torque = global_torque
-            prev_torque = torch.tensor(np.array(last_preds)[-window:, :]).unsqueeze(0) # (1, 1000, 6)
+            prev_torque = global_prev_torque
+            time = global_time
 
             position = position.to(device)
             velocity = velocity.to(device)
@@ -107,21 +107,22 @@ def main():
 
             last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
             last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist())
+            times.append(time[0,-1].cpu().item())
             print(f'At {i}/{len(loader)}; Current window MSE: {loss_fn(torque, cur_pred).item()}, MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
-    last_trues = np.array(last_trues)
+    last_trues = np.array(last_trues) 
     last_preds = np.array(last_preds)
     print(f'Last trues: {last_trues.shape}, last preds: {last_preds.shape}')
-    print(f'MSE: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
+    print(f'Scaled MSE: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
     # last_trues.shape = (1000, 6)
     # last_preds.shape = (1000, 6)
     # plot 6 plots one below the other comparing the true and predicted torque for each of the 6 joints
-    plt.figure(figsize=(24, 4))
+    plt.figure(figsize=(6, 12))
     for i in range(6):
         plt.subplot(6, 1, i+1)
-        plt.plot(last_trues[:,i], label='True')
-        plt.plot(last_preds[:,i], label='Predicted')
+        plt.plot(times, last_trues[:,i], label='True')
+        plt.plot(times, last_preds[:,i], label='Predicted')
         plt.legend()
     plt.savefig(f'../bilateral_free_space_sep_27/{exp}/psm1_mary/{data}/last_trues_preds.png')
 
