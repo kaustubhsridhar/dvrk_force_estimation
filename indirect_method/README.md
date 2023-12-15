@@ -15,6 +15,10 @@ This aims to learn a model that predicts \delta torque. The arguments for all co
 
 	python train_with_delta.py free_space 1 psm1_mary
 
+	or 
+
+	python train_with_delta.py free_space 1 psm3_fena
+
 ----------------------------------------------------------train_with_conformance----------------------------------------------------------
 This aims to learn a model that ensures that no velocity ==> no change in predicted torque. The arguments for all command below are the same as those for train.py described above.
 
@@ -22,20 +26,36 @@ First, create memories as follows
 
 	python create_memories.py free_space 1 psm1_mary
 
+	or 
+
+	python create_memories.py free_space 1 psm3_fena
+
 Then, train a conformant model as follows
 
 	python train_with_conformance.py free_space 1 psm1_mary
+
+	or
+
+	python train_with_conformance.py free_space 1 psm3_fena
 
 ----------------------------------------------------------test.py----------------------------------------------------------
 
 This is the base script to test each network. There are variations on this for testing each of the cases listed in the ISMR 2021 paper. It takes three arguemnts, the first is which experiment to load as a striong, the second is which network to use ('lstm' or not), and the third is whether to use the seal or base case. It assumes the path to data is at '../data/csv/test/< 'no_contact', 'with_contact' >/<exp>
 
-	python test.py <exp> <net> <data> 
+	python test.py <exp> <net> <data> <arm_name>
 	
 	E.g:
 	
 	python test.py test lstm_delta free_space psm1_mary
 
+	Or 
+
+	python test.py test lstm_delta free_space psm3_fena
+
 	Or
 
 	python test.py test lstm_delta_conform free_space psm1_mary
+
+	Or 
+
+	python test.py test lstm_delta_conform free_space psm3_fena

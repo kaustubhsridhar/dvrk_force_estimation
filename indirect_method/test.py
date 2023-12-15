@@ -20,7 +20,7 @@ def plot_helper(times, last_trues, last_preds):
         plt.plot(times, last_preds[:,i], label='Predicted')
         plt.legend()
     os.makedirs('../images', exist_ok=True)
-    plt.savefig(f'../images/bilateral_free_space_sep_27___{exp}___psm1_mary___{data}___last_trues_preds.png')
+    plt.savefig(f'../images/bilateral_free_space_sep_27___{exp}___{arm_name}___{data}___last_trues_preds.png')
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
