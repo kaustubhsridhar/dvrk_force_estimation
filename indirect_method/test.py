@@ -3,6 +3,7 @@ import torch
 from network import *
 import torch.nn as nn
 import utils
+from utils import max_torque
 import numpy as np
 from pathlib import Path
 from torch.utils.data import DataLoader
@@ -14,7 +15,7 @@ import os
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 JOINTS = utils.JOINTS
-epoch_to_use = 1000 #int(sys.argv[1])
+epoch_to_use = 95 #int(sys.argv[1])
 exp = sys.argv[1] 
 net = sys.argv[2]
 data = sys.argv[3]
@@ -28,6 +29,8 @@ else:
 root = Path('checkpoints')
     
 def main():
+    range_torque = torch.tensor(max_torque)
+
     all_pred = None
     path = join('..', 'bilateral_free_space_sep_27', exp, 'psm1_mary', data)
     in_joints = [0,1,2,3,4,5]
@@ -84,7 +87,7 @@ def main():
                 cur_pred = torch.zeros(torque.shape) # (1, i2, 6)
                 for j in range(JOINTS):
                     pred = networks[j](posvel).detach().cpu() # (1, i2, 1)
-                    cur_pred[:, :, j] = pred[:, :, 0] + prev_torque[:, :, j] # (1, i2)
+                    cur_pred[:, :, j] = pred[:, :, 0] * range_torque[j] + prev_torque[:, :, j] # (1, i2)
 
                 last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
                 last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist()) # (i2+1, 6)
@@ -104,7 +107,7 @@ def main():
             cur_pred = torch.zeros(torque.shape) # (1, 1000, 6)
             for j in range(JOINTS):
                 pred = networks[j](posvel).detach().cpu() # (1, 1000, 1)
-                cur_pred[:, :, j] = pred[:, :, 0] + prev_torque[:, :, j] # (1, 1000)
+                cur_pred[:, :, j] = pred[:, :, 0] * range_torque[j] + prev_torque[:, :, j] # (1, 1000)
 
             last_trues.append(torque[0,-1,:].cpu().numpy().tolist())
             last_preds.append(cur_pred[0,-1,:].cpu().numpy().tolist())

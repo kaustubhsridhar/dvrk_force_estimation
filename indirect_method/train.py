@@ -96,7 +96,7 @@ for e in range(epoch, epochs + 1):
         step_loss = 0
 
         for j in range(JOINTS):
-            pred = networks[j](posvel) #* range_torque[j]
+            pred = networks[j](posvel) * range_torque[j]
             if is_rnn:
                 loss = loss_fn(pred.squeeze(), torque[:,:,j])
             else:
@@ -127,7 +127,7 @@ for e in range(epoch, epochs + 1):
                 posvel = torch.cat((position, velocity), axis=1).contiguous()
 
             for j in range(JOINTS):
-                pred = networks[j](posvel)# * range_torque[j]
+                pred = networks[j](posvel) * range_torque[j]
                 if is_rnn:
                     loss = loss_fn(pred.squeeze(), torque[:,:,j])
                 else:

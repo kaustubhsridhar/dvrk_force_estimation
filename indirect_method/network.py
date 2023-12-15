@@ -69,7 +69,7 @@ class torqueLstmNetwork(nn.Module):
         x = self.linear0(x)
         x = self.relu(x)
         x = self.linear1(x)
-#        x = self.tanh(x)
+        x = self.tanh(x)
         return x
 
     def init_hidden(self, batch_size, device):

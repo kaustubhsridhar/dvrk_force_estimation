@@ -102,11 +102,13 @@ for e in range(epoch, epochs + 1):
         step_loss = 0
 
         for j in range(JOINTS):
-            pred = networks[j](posvel) #* range_torque[j]
+            pred = networks[j](posvel)
             if is_rnn:
-                loss = loss_fn(pred.squeeze() + prev_torque[:,:,j], torque[:,:,j])
+                pred = (pred.squeeze()) * range_torque[j] + prev_torque[:,:,j]
+                loss = loss_fn(pred, torque[:,:,j])
             else:
-                loss = loss_fn(pred.squeeze() + prev_torque[:,j], torque[:,j])
+                pred = (pred.squeeze()) * range_torque[j] + prev_torque[:,j]
+                loss = loss_fn(pred, torque[:,j])
             step_loss += loss.item()
             optimizers[j].zero_grad()
             loss.backward()
@@ -134,11 +136,13 @@ for e in range(epoch, epochs + 1):
                 posvel = torch.cat((position, velocity), axis=1).contiguous()
 
             for j in range(JOINTS):
-                pred = networks[j](posvel)# * range_torque[j]
+                pred = networks[j](posvel)
                 if is_rnn:
-                    loss = loss_fn(pred.squeeze() + prev_torque[:,:,j], torque[:,:,j])
+                    pred = (pred.squeeze()) * range_torque[j] + prev_torque[:,:,j]
+                    loss = loss_fn(pred, torque[:,:,j])
                 else:
-                    loss = loss_fn(pred.squeeze() + prev_torque[:,j], torque[:,j])
+                    pred = (pred.squeeze()) * range_torque[j] + prev_torque[:,j]
+                    loss = loss_fn(pred, torque[:,j])
                 val_loss[j] += loss.item()
 
         val_loss = val_loss / len(val_loader) # New: moved out of for loop!
