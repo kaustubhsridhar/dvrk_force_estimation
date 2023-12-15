@@ -5,7 +5,7 @@ from scipy import signal
 from torch.utils.data import Dataset
 
 class indirectDataset(Dataset):
-    def __init__(self, path, window, skip, indices = [0,1,2,3,4,5], num=1e9, is_rnn=False, filter_signal=False, return_prev_torque=False):
+    def __init__(self, path, window, skip, indices = [0,1,2,3,4,5], num=1e9, is_rnn=False, filter_signal=False, return_prev_torque=False, train=True):
 
         all_joints = np.array([])
         joint_path = join(path, 'joints')
@@ -18,6 +18,7 @@ class indirectDataset(Dataset):
         self.position = all_joints[:, self.indices + 1].astype('float32')
         self.velocity = all_joints[:, self.indices + 7].astype('float32')
         self.torque = all_joints[:, self.indices + 13].astype('float32')
+        self.train = train
 
         if len(self.position.shape) < 2:
             self.position = np.expand_dims(self.position, axis=1)
@@ -41,12 +42,12 @@ class indirectDataset(Dataset):
                 self.torque[:,i] = signal.filtfilt(b, a, self.torque[:,i])
         
     def __len__(self):
-        return int(min(self.torque.shape[0], self.num * 200)/self.window) - self.skip
+        return (int(min(self.torque.shape[0], self.num * 200)/self.window) - self.skip) if self.train else (self.torque.shape[0] - self.window)
 
     def __getitem__(self, idx):
         quotient = int(idx / self.skip)
         remainder = idx % self.skip
-        begin = quotient * self.window * self.skip + remainder 
+        begin = (quotient * self.window * self.skip + remainder) if self.train else idx
         end = begin + self.window * self.skip 
         if self.return_prev_torque: 
             begin = begin + 1 # New

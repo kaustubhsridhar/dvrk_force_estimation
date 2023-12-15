@@ -12,6 +12,16 @@ from os.path import join
 import matplotlib.pyplot as plt
 import os 
 
+def plot_helper(times, last_trues, last_preds):
+    plt.figure(figsize=(6, 12))
+    for i in range(6):
+        plt.subplot(6, 1, i+1)
+        plt.plot(times, last_trues[:,i], label='True')
+        plt.plot(times, last_preds[:,i], label='Predicted')
+        plt.legend()
+    os.makedirs('../images', exist_ok=True)
+    plt.savefig(f'../images/bilateral_free_space_sep_27___{exp}___psm1_mary___{data}___last_trues_preds.png')
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 JOINTS = utils.JOINTS
@@ -41,9 +51,9 @@ def main():
         window = utils.WINDOW
     
     if is_rnn:
-        dataset = indirectDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True)
+        dataset = indirectDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True, train=False)
     else:
-        dataset = indirectTestDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True)
+        dataset = indirectTestDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn, return_prev_torque=True, train=False)
     loader = DataLoader(dataset=dataset, batch_size = batch_size, shuffle=False, drop_last=False)
 
     model_root = []    
@@ -114,6 +124,9 @@ def main():
             times.append(time[0,-1].cpu().item())
             print(f'At {i}/{len(loader)}; Current window MSE: {loss_fn(torque, cur_pred).item()}, MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
+        if i % 1000 == 0:
+            plot_helper(times, last_trues, last_preds)
+
     last_trues = np.array(last_trues) 
     last_preds = np.array(last_preds)
     print(f'Last trues: {last_trues.shape}, last preds: {last_preds.shape}')
@@ -122,15 +135,7 @@ def main():
     # last_trues.shape = (1000, 6)
     # last_preds.shape = (1000, 6)
     # plot 6 plots one below the other comparing the true and predicted torque for each of the 6 joints
-    plt.figure(figsize=(6, 12))
-    for i in range(6):
-        plt.subplot(6, 1, i+1)
-        plt.plot(times, last_trues[:,i], label='True')
-        plt.plot(times, last_preds[:,i], label='Predicted')
-        plt.legend()
-    os.makedirs('../images', exist_ok=True)
-    plt.savefig(f'../images/bilateral_free_space_sep_27___{exp}___psm1_mary___{data}___last_trues_preds.png')
-
+    plot_helper(times, last_trues, last_preds)
 
 if __name__ == "__main__":
     main()
