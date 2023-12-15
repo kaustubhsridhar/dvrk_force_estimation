@@ -8,7 +8,7 @@ download and extract the `bilateral_free_space_sep_27` folder from [link](https:
 
 This is the base script to train each network. There are variations on this for training each of the cases listed in the ISMR 2021 paper. It takes two arguemnts, the first is which data to load (choice between 'free_space' and 'trocar'). The second is a boolean for whether to use the RNN or not. It assumes the path to data is at '../data/csv/< 'train', 'val' >/< 'free_space', 'trocar' >'
 
-	python train.py free_space 1
+	python train.py free_space 1 psm1_mary
     
 ----------------------------------------------------------train_with_delta----------------------------------------------------------
 This aims to learn a model that predicts \delta torque. The arguments for all command below are the same as those for train.py described above. 
@@ -20,11 +20,11 @@ This aims to learn a model that ensures that no velocity ==> no change in predic
 
 First, create memories as follows
 
-	python create_memories.py free_space 1
+	python create_memories.py free_space 1 psm1_mary
 
 Then, train a conformant model as follows
 
-	python train_with_conformance.py free_space 1
+	python train_with_conformance.py free_space 1 psm1_mary
 
 ----------------------------------------------------------test.py----------------------------------------------------------
 
