@@ -29,7 +29,8 @@ epoch_to_use = 95 #int(sys.argv[1])
 exp = sys.argv[1] 
 net = sys.argv[2]
 data = sys.argv[3]
-preprocess = 'filtered_torque'# sys.argv[4]
+arm_name = sys.argv[4]
+preprocess = f'filtered_torque/{arm_name}'# sys.argv[4]
 is_rnn = ('lstm' in net)
 print('Running for is_rnn value: ', is_rnn)
 if is_rnn:
@@ -42,7 +43,7 @@ def main():
     range_torque = torch.tensor(max_torque)
 
     all_pred = None
-    path = join('..', 'bilateral_free_space_sep_27', exp, 'psm1_mary', data)
+    path = join('..', 'bilateral_free_space_sep_27', exp, arm_name, data)
     in_joints = [0,1,2,3,4,5]
 
     if is_rnn:
@@ -125,7 +126,7 @@ def main():
             print(f'At {i}/{len(loader)}; Current window MSE: {loss_fn(torque, cur_pred).item()}, MSE So Far: {loss_fn(torch.tensor(last_preds), torch.tensor(last_trues)).item()}')
 
         if i % 1000 == 0:
-            plot_helper(times, last_trues, last_preds)
+            plot_helper(times, np.array(last_trues), np.array(last_preds))
 
     last_trues = np.array(last_trues) 
     last_preds = np.array(last_preds)

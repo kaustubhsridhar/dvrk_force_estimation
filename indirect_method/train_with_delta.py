@@ -14,17 +14,19 @@ from os.path import join
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 data = sys.argv[1]
-train_path = join('..', 'bilateral_free_space_sep_27', 'train', 'psm1_mary', data)
-val_path = join('..', 'bilateral_free_space_sep_27', 'val', 'psm1_mary', data)
 root = Path('checkpoints' )
 os.makedirs(root, exist_ok=True)
-os.makedirs(root / 'filtered_torque', exist_ok=True)
+os.makedirs(root / f'filtered_torque', exist_ok=True)
 is_rnn = bool(int(sys.argv[2]))
+arm_name = sys.argv[3]
+train_path = join('..', 'bilateral_free_space_sep_27', 'train', f'{arm_name}', data)
+val_path = join('..', 'bilateral_free_space_sep_27', 'val', f'{arm_name}', data)
+os.makedirs(root / f'filtered_torque' / arm_name, exist_ok=True)
 if is_rnn:
     folder = 'lstm_delta/'
 else:
     folder = 'ff_delta/'
-os.makedirs(root / "filtered_torque" / folder, exist_ok=True)
+os.makedirs(root / "filtered_torque" / arm_name / folder, exist_ok=True)
 folder = folder + data
 range_torque = torch.tensor(max_torque).to(device)
     
@@ -64,7 +66,7 @@ loss_fn = torch.nn.MSELoss()
 
 for j in range(JOINTS):
     try:
-        model_root.append(root / "filtered_torque" / (folder + str(j)))
+        model_root.append(root / "filtered_torque" / arm_name / (folder + str(j)))
         model_root[j].mkdir(mode=0o777, parents=False)
     except OSError:
         print("Model path exists")
